@@ -15,6 +15,7 @@ type shard struct {
 	internalMap map[string]*interface{}
 }
 
+//NewShardMap initializes new Shardmap
 func NewShardMap(shards int) ShardMap {
 	asmap := ShardMap{
 		shards:   shards,
@@ -29,6 +30,9 @@ func NewShardMap(shards int) ShardMap {
 	return asmap
 }
 
+//ForceGet is for concurrent write-read.
+//if you expect a entry to be written on another goroutine - this function is handy for waiting that entry to appear
+//Do note - theres the loop of this as of now, and this will at minimum do 2 Get calls.
 func (a ShardMap) ForceGet(key string) *interface{} {
 	for a.Get(key) == nil {
 		time.Sleep(time.Microsecond * 1)
@@ -36,6 +40,8 @@ func (a ShardMap) ForceGet(key string) *interface{} {
 	return a.Get(key)
 }
 
+//LockGet is yet another concurrent helper function.
+//Lockget is for using sync.rwmutex.lock instead of sync.rwmutex.rlock for reading.
 func (a ShardMap) LockGet(key string) *interface{} {
 	//println("get key: ", key)
 	shard := a.DjbHash(key) & uint32(a.shards-1)
@@ -46,6 +52,7 @@ func (a ShardMap) LockGet(key string) *interface{} {
 	return a.shardMap[shard].internalMap[key]
 }
 
+//Get returns entry from the sharded map
 func (a ShardMap) Get(key string) *interface{} {
 	//println("get key: ", key)
 	shard := a.DjbHash(key) & uint32(a.shards-1)
@@ -59,6 +66,7 @@ func (a ShardMap) Get(key string) *interface{} {
 	return a.shardMap[shard].internalMap[key]
 }
 
+//Set sets an entry into the sharded map
 func (a ShardMap) Set(key string, data *interface{}) {
 	shard := a.DjbHash(key) & uint32(a.shards-1)
 	if a.shardMap[shard] == nil {
@@ -77,6 +85,8 @@ func (a ShardMap) Set(key string, data *interface{}) {
 		} */
 	return
 }
+
+//Delete deletes an antry from the sharded map - if the entry doesnt exist, it does nothing.
 func (a ShardMap) Delete(key string) {
 	shard := a.DjbHash(key) & uint32(a.shards-1)
 
@@ -87,7 +97,9 @@ func (a ShardMap) Delete(key string) {
 	return
 }
 
-//
+//SetIfNotExist is also another concurrency helper function.
+//SetIfNotExist will set value if it does not exist yet, otherwise it will do nothing
+//the function will return true on success, and false if the key already exists.
 func (a *ShardMap) SetIfNotExist(key string, data *interface{}) bool {
 	shard := a.DjbHash(key) & uint32(a.shards-1)
 
@@ -104,6 +116,7 @@ func (a *ShardMap) SetIfNotExist(key string, data *interface{}) bool {
 	}
 }
 
+//DjbHash is for sharding the map.
 //according to internets, this is fastest hashing algorithm ever made.
 //we dont need security, we need distribution which this provides for us.
 func (a ShardMap) DjbHash(inp string) uint32 {
