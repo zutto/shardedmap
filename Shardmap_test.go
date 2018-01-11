@@ -205,8 +205,13 @@ func TestWithMass(t *testing.T) {
 }
 
 func TestGetSetDel(t *testing.T) {
-	test(t, "delta")
-
+	if err := test(t, "delta"); err != nil {
+		t.Fatal(err.Error())
+	}
+	if Initialized == false {
+		x = NewShardMap(shards)
+		Initialized = true
+	}
 	Initialized = true
 }
 
