@@ -11,7 +11,7 @@ type ShardMap struct {
 }
 
 type shard struct {
-	lock        sync.Mutex
+	lock        sync.RWMutex
 	internalMap map[string]*interface{}
 }
 
@@ -53,8 +53,8 @@ func (a ShardMap) Get(key string) *interface{} {
 		panic("fail!")
 	}
 
-	a.shardMap[shard].lock.Lock()
-	defer a.shardMap[shard].lock.Unlock()
+	a.shardMap[shard].lock.RLock()
+	defer a.shardMap[shard].lock.RUnlock()
 
 	return a.shardMap[shard].internalMap[key]
 }
