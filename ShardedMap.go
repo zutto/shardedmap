@@ -100,7 +100,7 @@ func (a ShardMap) Delete(key string) {
 //SetIfNotExist is also another concurrency helper function.
 //SetIfNotExist will set value if it does not exist yet, otherwise it will do nothing
 //the function will return true on success, and false if the key already exists.
-func (a *ShardMap) SetIfNotExist(key string, data *interface{}) bool {
+func (a ShardMap) SetIfNotExist(key string, data *interface{}) bool {
 	shard := a.DjbHash(key) & uint32(a.shards-1)
 
 	a.shardMap[shard].lock.Lock()
