@@ -90,7 +90,6 @@ func (a *ShardMap) Get(key string) *interface{} {
 
 //Set sets an entry into the sharded map
 func (a *ShardMap) Set(key string, data *interface{}) {
-	a.Keys++
 	shard := a.DjbHash(key) & uint32(a.shards-1)
 	if a.shardMap[shard] == nil {
 		panic("fail!")
@@ -111,7 +110,6 @@ func (a *ShardMap) Set(key string, data *interface{}) {
 
 //Delete deletes an antry from the sharded map - if the entry doesnt exist, it does nothing.
 func (a *ShardMap) Delete(key string) {
-	a.Keys--
 	shard := a.DjbHash(key) & uint32(a.shards-1)
 
 	a.shardMap[shard].Lock.Lock()
