@@ -20,15 +20,16 @@ func TestArchiver(t *testing.T) {
 	fmt.Printf("test\n")
 	a := Archiver{
 		name:      "tmp/tartest",
-		SizeLimit: 1000 * 1000 * 1,
+		SizeLimit: 1000 * 1000 * 5,
 	}
 	a.StartArchiveMapper()
 	data1 := []byte("tesing 4555")
 	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < 1000; i++ {
-		rndname := RandStringRunes(4)
+	for i := 0; i < 1; i++ {
+		rndname := RandStringRunes(9)
 		a.addFile(rndname, &data1, false)
 	}
+	//time.Sleep(time.Second * 1)
 	//
 	//data2 := []byte("tesing 4444")
 	//
@@ -36,7 +37,7 @@ func TestArchiver(t *testing.T) {
 	fmt.Printf("%#v", string((*x)[:]))
 	a.addFile("test", &data1)*/
 	a.ReindexFiles()
-	time.Sleep(time.Second * 10)
+	//time.Sleep(time.Second * 10)
 }
 
 var letterRunes = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghij")

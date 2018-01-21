@@ -4,8 +4,8 @@ import (
 	"archive/tar"
 	crypto "crypto/rand"
 	"fmt"
-	//"github.com/zutto/ShardQuest"
-	"github.com/zutto/ShardReduce"
+	"github.com/zutto/ShardQuest"
+	//"github.com/zutto/ShardReduce"
 	"github.com/zutto/shardedmap"
 
 	//"io/ioutil"
@@ -75,7 +75,8 @@ func (a *Archiver) reMap() {
 	for i := 0; i < len(files); i++ {
 		file, err := os.Open(files[i])
 		if err != nil {
-			panic("failed to open file") //todo handle properly
+			fmt.Printf("e %s\n", err.Error())
+			panic("failed to open fi qqle") //todo handle properly
 		}
 		tarReader := tar.NewReader(file)
 		for {
@@ -114,6 +115,7 @@ func (a *Archiver) reMap() {
 				}
 			}
 		}
+		file.Close()
 	}
 }
 
@@ -131,7 +133,7 @@ func (a *Archiver) GetFile(name string) (*tar.Header, *[]byte, error) {
 	file, err := os.OpenFile((*x).(fileMap).diskFileName, os.O_RDONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
-		panic("failed to open file")
+		panic("failed to open file cc")
 	}
 
 	tr := tar.NewReader(file)
@@ -212,7 +214,7 @@ func (a *Archiver) getFreeFile(estimate int64, restriction string, baseName stri
 			if len(restriction) > 0 {
 				f, e := os.Open(files[i])
 				if e != nil {
-					panic("failed to open file")
+					panic("failed to open file x")
 				}
 
 				tr := tar.NewReader(f)
@@ -322,47 +324,145 @@ func (a *Archiver) ReindexFiles() {
 	fmt.Printf("mapping done\n")
 	a.mapped = true
 
-	/*
-		q := ShardQuest.NewQuest(&a.indexMap)
-		q.FindValues(func(i interface{}) bool {
-			return i.(fileMap).deleted
-		}).Delete() */
+	//drop entries marked as deleted
+	q := ShardQuest.NewQuest(&a.indexMap)
+	q.FindValues(func(i interface{}) bool {
+		return i.(fileMap).deleted
+	}).Delete()
 
 	var filesToRename map[string]bool = make(map[string]bool)
+	var remappedList []string = make([]string, 0)
 	reindexUID := a.UUID() + a.UUID()
-	sh := a.indexMap.RAW()
 
-	/*oname := ""
-	var hd []*tar.Header = make([]*tar.Header, 0)
-	var dd []*[]byte = make([]*[]byte, 0)
-	var ovirt int64 = 0*/
-	for kx, shard := range *sh {
+	files, err := filepath.Glob(a.name + "*.tar")
+	if err != nil {
+		panic("failed to read files list!") //todo handle properly
+	}
+	for i := 0; i < len(files); i++ {
+		file, err := os.Open(files[i])
+		if err != nil {
+			panic("failed to open fil ye") //todo handle properly
+		}
 
-		x := ShardReduce.NewShardReduce(&(*shard).InternalMap)
+		rnRequired := true
+		remapped := false
+		tarReader := tar.NewReader(file)
 
-		x.Map(func(key string, value interface{}) interface{} {
-
-			var v fileMap = value.(fileMap)
-			fn := a.getFreeFile(v.size, "", reindexUID)
-			headers, data, geterr := a.GetFile(key)
-			if geterr != nil {
-				panic("failed to reindex!")
+		for {
+			h, err := tarReader.Next()
+			if err != nil {
+				break
 			}
+			ver, vererr := strconv.Atoi(h.Xattrs["version"])
+			if vererr != nil {
+				ver = 0
+			}
+			var fileData interface{} = fileMap{
+				diskFileName: files[i],
+				version:      ver,
+			}
+			x := a.indexMap.Get(h.Name)
+			if x != nil {
+				if (*x).(fileMap).version == fileData.(fileMap).version {
 
-			if _, err := os.Stat(fn); os.IsNotExist(err) {
-				a.WriteToArchive(fn, headers, data)
+					//headers
+					tda := make([]byte, (*x).(fileMap).size)
+					_, err := tarReader.Read(tda)
+					if err != nil {
+						panic("failed to get a file from tar!")
+					}
+
+					/*
+
+					 */
+					var target string = ""
+					if len(remappedList) < 1 {
+						ptf, err := os.Stat(files[i] + reindexUID)
+						if err != nil {
+							//panic("failed to stat file?")
+						} else {
+							if ptf.Size()+(*x).(fileMap).size > a.SizeLimit {
+								e := os.Rename(files[i]+reindexUID, files[i])
+								if e != nil {
+
+									fmt.Println(e.(*os.LinkError).Op)
+									fmt.Println(e.(*os.LinkError).Old)
+									fmt.Println(e.(*os.LinkError).New)
+									fmt.Println(e.(*os.LinkError).Err)
+									fmt.Printf("%#v\n", e.Error())
+								}
+								files[i] = a.name + "." + a.UUID() + ".tar"
+							}
+						}
+						target = files[i] + reindexUID
+					} else {
+						for i := 0; i < len(remappedList); i++ {
+							ptf, err := os.Stat(remappedList[i])
+							if err != nil {
+								panic("failed to stat file?")
+							}
+							if ptf.Size()+(*x).(fileMap).size < a.SizeLimit {
+								target = remappedList[i]
+								//	rnRequired = false
+							}
+						}
+
+						if target == "" {
+							target = files[i] + reindexUID //fallback
+						}
+					}
+
+					if rnRequired == false {
+						fmt.Printf("not writing to new index file, %s\n", target)
+						var q fileMap = (*x).(fileMap)
+						q.diskFileName = target
+						var qi interface{} = q
+						a.indexMap.Set(h.Name, &qi)
+					}
+
+					headers := tar.Header{
+						Name:   h.Name,
+						Size:   int64((*x).(fileMap).size),
+						Mode:   0400,
+						Xattrs: map[string]string{"version": fmt.Sprintf("%d", (*x).(fileMap).version), "delete": fmt.Sprintf("%t", false), "size": fmt.Sprintf("%d", (*x).(fileMap).size)},
+					}
+
+					if _, err := os.Stat(target); os.IsNotExist(err) {
+						a.WriteToArchive(target, &headers, &tda)
+					} else {
+						a.AppendToArchive(target, &headers, &tda)
+					}
+					remapped = true
+				} else {
+					fmt.Printf("Dropping file %s (size: %d) %#v\n", h.Name, h.Size, h.Xattrs)
+				}
 			} else {
-				a.AppendToArchive(fn, headers, data)
+				fmt.Printf("Dropping file %s (size: %d) %#v\n", h.Name, h.Size, h.Xattrs)
 			}
+		}
 
-			filesToRename[fn] = true
+		if remapped {
+			os.Remove(files[i])
+			if _, err := os.Stat(files[i] + reindexUID); !os.IsNotExist(err) {
+				fmt.Printf("remappenings!")
+				e := os.Rename(files[i]+reindexUID, files[i])
+				if e != nil {
 
-			return value
-		})
-		fmt.Printf("?? done? %#v -- %d\n", kx, a.IndexShards)
+					fmt.Println(e.(*os.LinkError).Op)
+					fmt.Println(e.(*os.LinkError).Old)
+					fmt.Println(e.(*os.LinkError).New)
+					fmt.Println(e.(*os.LinkError).Err)
+					fmt.Printf("%#v\n", e.Error())
+				}
+
+				remappedList = append(remappedList, files[i])
+			}
+		}
+		file.Close()
 	}
 
 	fmt.Printf("-----\n------\ndelete: \n----------\n------\nrename %#v\n\n", filesToRename)
+
 	if len(filesToRename) > 0 {
 		files, err := filepath.Glob(a.name + "*.tar")
 		if err != nil {
