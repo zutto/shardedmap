@@ -18,6 +18,9 @@ func (sr *ShardReduce) NewInput(input *map[string]*interface{}) *ShardReduce {
 }
 
 func (sr *ShardReduce) Filter(fFunc func(string, interface{}) bool) *ShardReduce {
+	if len(*sr.input) < 1 {
+		return sr
+	}
 	tempStock := make(map[string]*interface{})
 	for k, v := range *sr.input {
 		if fFunc(k, *v) == true {
@@ -29,6 +32,9 @@ func (sr *ShardReduce) Filter(fFunc func(string, interface{}) bool) *ShardReduce
 }
 
 func (sr *ShardReduce) Map(mapFunc func(string, interface{}) interface{}) *ShardReduce {
+	if len(*sr.input) < 1 {
+		return sr
+	}
 	tempStock := make(map[string]*interface{})
 	for k, v := range *sr.input {
 		r := mapFunc(k, *v)
@@ -42,6 +48,9 @@ func (sr *ShardReduce) Map(mapFunc func(string, interface{}) interface{}) *Shard
 }
 
 func (sr *ShardReduce) Reduce(reduceFunc func(string, interface{}, string, interface{}) interface{}) interface{} {
+	if len(*sr.input) < 1 {
+		return sr
+	}
 	var lastKey string
 	var last interface{}
 
@@ -58,5 +67,8 @@ func (sr *ShardReduce) Reduce(reduceFunc func(string, interface{}, string, inter
 }
 
 func (sr *ShardReduce) Get() *map[string]*interface{} {
+	if len(*sr.input) < 1 {
+		return sr
+	}
 	return sr.input
 }
