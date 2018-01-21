@@ -27,7 +27,7 @@ type Archiver struct {
 	indexed     bool
 	mapped      bool
 
-	reindexInterval time.Duration
+	ReindexInterval time.Duration
 
 	writeLock sync.Mutex
 	mapLock   sync.Mutex
@@ -50,8 +50,8 @@ func (a *Archiver) StartArchiveMapper() {
 		a.IndexShards = 16
 	}
 
-	if a.reindexInterval == 0 {
-		a.reindexInterval = time.Second * 2
+	if a.ReindexInterval == 0 {
+		a.ReindexInterval = time.Second * 2
 	}
 	a.indexMap = Shardmap.NewShardMap(a.IndexShards)
 	go func() {
@@ -60,7 +60,7 @@ func (a *Archiver) StartArchiveMapper() {
 			a.reMap()
 			a.mapLock.Unlock()
 			a.mapped = true
-			time.Sleep(a.reindexInterval)
+			time.Sleep(a.ReindexInterval)
 		}
 	}()
 }
@@ -172,7 +172,6 @@ func (a *Archiver) addFile(name string, data *[]byte, del bool) {
 			time.Sleep(time.Millisecond * 1)
 		}
 	}
-
 	ex := a.indexMap.Get(name)
 	f := fileMap{
 		version: 0,
@@ -486,40 +485,16 @@ func (a *Archiver) ReindexFiles() {
 
 		}
 	}
-	/*
-	   files, err := filepath.Glob(a.name + "*.tar")
-	   	if err != nil {
-	   		panic("failed to read files list!") //todo handle properly
-	   	}
-	   	for i := 0; i < len(files); i++ {
-	   		file, err := os.Open(files[i])
-	   		if err != nil {
-	   			panic("failed to open file") //todo handle properly
-	   		}
 
-	   		tarReader := tar.NewReader(file)
-	   		for {
-	   			h, err := tarReader.Next()
-	   			if err != nil {
-	   				break
-	   			}
-	   			ver, vererr := strconv.Atoi(h.Xattrs["version"])
-	   			if vererr != nil {
-	   				ver = 0
-	   			}
-	   			var fileData interface{} = fileMap{
-	   				diskFileName: files[i],
-	   				version:      ver,
-	   			}
-	   			if a.indexMap.SetIfNotExist(h.Name, &fileData) == false {
-	   				if (*a.indexMap.Get(h.Name)).(fileMap).version < fileData.(fileMap).version {
-	   					a.indexMap.Set(h.Name, &fileData)
-	   				}
-	   			}
-	   		}
-	   	}
-	*/
+}
 
+func (a *Archiver) GetList() *[]*Shardmap.Shard {
+	if a.mapped == false {
+		for a.mapped == false {
+			time.Sleep(time.Millisecond * 1)
+		}
+	}
+	return a.indexMap.RAW()
 }
 
 func (a *Archiver) UUID() string {

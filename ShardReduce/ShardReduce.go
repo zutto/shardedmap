@@ -68,7 +68,7 @@ func (sr *ShardReduce) Reduce(reduceFunc func(string, interface{}, string, inter
 
 func (sr *ShardReduce) Get() *map[string]*interface{} {
 	if len(*sr.input) < 1 {
-		return sr
+		return nil
 	}
 	return sr.input
 }
