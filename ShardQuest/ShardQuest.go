@@ -118,7 +118,11 @@ func (q *Quest) ToResults(in *map[string]*interface{}) {
 //-
 
 func (f *Quest) mappend(res *map[string]*interface{}, in *map[string]*interface{}) {
+	if in == nil {
+		return
+	}
 	for k, v := range *in {
 		(*res)[k] = v
 	}
+	return
 }

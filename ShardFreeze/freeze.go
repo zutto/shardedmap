@@ -1,13 +1,14 @@
 package ShardFreeze
 
 import (
-	"bytes"
-	"encoding/gob"
+	//"bytes"
+	"encoding/json"
+	//"fmt"
 	"github.com/zutto/shardedmap"
 	"github.com/zutto/shardedmap/ShardReduce"
-	"io/ioutil"
+	//"io/ioutil"
+	"sync"
 	"time"
-	//"sync"
 )
 
 type Freeze struct {
@@ -27,7 +28,7 @@ NewFreeze returns a freeze object for freezing shardmap collection into a file(S
 func NewFreeze(freezeName string, s *Shardmap.ShardMap) *Freeze {
 	f := Freeze{
 		name:                freezeName,
-		FreezeFileSizeLimit: (1000 * 1000 * 1000 * 1), //1 Gigabyte
+		FreezeFileSizeLimit: (1000 * 10), //1 Gigabyte
 		shardmap:            s,
 	}
 	a := Archiver{
@@ -46,10 +47,15 @@ func (f *Freeze) ReindexFreeze() {
 	f.archiver.ReindexFiles()
 }
 
+func (f *Freeze) GetDupes() int64 {
+	return f.archiver.DupeCount()
+}
+
 func (f *Freeze) FreezeCompleteSet() {
 	for _, shard := range *f.shardmap.RAW() {
 		sr := ShardReduce.NewShardReduce(&(shard.InternalMap))
 		sr.Map(func(key string, value interface{}) interface{} {
+
 			f.Set(key, value)
 
 			return value
@@ -58,40 +64,42 @@ func (f *Freeze) FreezeCompleteSet() {
 }
 
 func (f *Freeze) gobInterface(i interface{}) *[]byte {
-	a := &bytes.Buffer{}
-	g := gob.NewEncoder(a)
-	g.Encode(i)
-
-	data, _ := ioutil.ReadAll(a)
-	return &data
+	b, err := json.Marshal(i.(interface{}))
+	if err != nil {
+		return nil
+	}
+	return &b
 }
 
 func (f *Freeze) interfaceGob(data *[]byte) interface{} {
-	a := &bytes.Buffer{}
-	g := gob.NewDecoder(a)
-	var wr int64 = 0
-	for wr < int64(len(*data)) {
-		w, e := a.Write((*data)[wr:])
-		wr += int64(w)
-		if e != nil {
-			break
-		}
+	var x interface{}
+	err := json.Unmarshal(*data, &x)
+	if err != nil {
+
+		return x
 	}
-	var r interface{}
-	g.Decode(r)
-	return r
+
+	return x
 }
 
 func (f *Freeze) LoadFreeze() {
-	for _, shard := range *f.archiver.GetList() {
-		println("shardxx")
-		sr := ShardReduce.NewShardReduce(&(shard.InternalMap))
-		sr.Map(func(key string, value interface{}) interface{} {
-			data := f.Get(key)
-			(*f.shardmap).Set(key, &data)
-			return value
-		})
+	s := sync.WaitGroup{}
+	l := *f.archiver.GetList()
+	for _, shard := range l {
+		println("loading freeze")
+		s.Add(1)
+		go func(shard *Shardmap.Shard) {
+			sr := ShardReduce.NewShardReduce(&(shard.InternalMap))
+			sr.Map(func(key string, value interface{}) interface{} {
+				data := f.Get(key)
+				(*f.shardmap).Set(key, &(data))
+				return value
+			})
+			println("load done")
+			s.Done()
+		}(shard)
 	}
+	s.Wait()
 }
 
 func (f *Freeze) Set(key string, data interface{}) {

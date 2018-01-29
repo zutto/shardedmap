@@ -4,7 +4,7 @@ import (
 	"archive/tar"
 	crypto "crypto/rand"
 	"fmt"
-	"github.com/zutto/ShardQuest"
+	"github.com/zutto/shardedmap/ShardQuest"
 	//"github.com/zutto/ShardReduce"
 	"github.com/zutto/shardedmap"
 
@@ -31,6 +31,8 @@ type Archiver struct {
 
 	writeLock sync.Mutex
 	mapLock   sync.Mutex
+
+	dupes int64
 }
 
 type ShardIO struct {
@@ -176,9 +178,12 @@ func (a *Archiver) addFile(name string, data *[]byte, del bool) {
 	f := fileMap{
 		version: 0,
 	}
+
 	if ex != nil {
 		f.version = (*ex).(fileMap).version + 1
 		f.diskFileName = a.getFreeFile(int64(len(*data)), name, "") //cant have 2 files with same name in same file..
+		a.dupes++
+		println("dupe", name)
 	} else {
 		f.diskFileName = a.getFreeFile(int64(len(*data)), "", "")
 	}
@@ -318,14 +323,15 @@ func (a *Archiver) ReindexFiles() {
 
 	a.mapLock.Lock()
 	defer a.mapLock.Unlock()
-	fmt.Printf("mapping\n")
 	a.reMap()
-	fmt.Printf("mapping done\n")
 	a.mapped = true
 
 	//drop entries marked as deleted
 	q := ShardQuest.NewQuest(&a.indexMap)
 	q.FindValues(func(i interface{}) bool {
+		if i.(fileMap).deleted {
+			fmt.Printf("dropping %#v", i.(fileMap))
+		}
 		return i.(fileMap).deleted
 	}).Delete()
 
@@ -337,6 +343,7 @@ func (a *Archiver) ReindexFiles() {
 	if err != nil {
 		panic("failed to read files list!") //todo handle properly
 	}
+
 	for i := 0; i < len(files); i++ {
 		file, err := os.Open(files[i])
 		if err != nil {
@@ -494,6 +501,7 @@ func (a *Archiver) GetList() *[]*Shardmap.Shard {
 			time.Sleep(time.Millisecond * 1)
 		}
 	}
+	println("map back")
 	return a.indexMap.RAW()
 }
 
@@ -505,4 +513,8 @@ func (a *Archiver) UUID() string {
 	}
 
 	return fmt.Sprintf("%X", b[:]) //b[0:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
+}
+
+func (a *Archiver) DupeCount() int64 {
+	return a.dupes
 }
