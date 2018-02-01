@@ -48,6 +48,11 @@ func (q *Quest) FindValues(filterFunc func(interface{}) bool) *Quest {
 	return q
 }
 
+func (q *Quest) FindFilterValues(filterFunc func(string, interface{}) bool) *Quest {
+	q.find.FindFilterValues(filterFunc)
+	return q
+}
+
 /*
 FindKeys - similar what findvalues is, but accepts a regex string for finding keys.
 
@@ -118,7 +123,11 @@ func (q *Quest) ToResults(in *map[string]*interface{}) {
 //-
 
 func (f *Quest) mappend(res *map[string]*interface{}, in *map[string]*interface{}) {
+	if in == nil {
+		return
+	}
 	for k, v := range *in {
 		(*res)[k] = v
 	}
+	return
 }

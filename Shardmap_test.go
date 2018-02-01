@@ -3,6 +3,7 @@ package Shardmap
 import (
 	"errors"
 	"fmt"
+	"github.com/google/gofuzz"
 	"math/rand"
 	"runtime"
 	"sync"
@@ -13,6 +14,16 @@ import (
 type xy struct {
 	Key   string
 	Value string
+}
+
+type complexXy struct {
+	key     string
+	value   int
+	testing int64
+	b       bool
+	c       float64
+	d       uint32
+	y       uint16
 }
 
 var a ShardMap = NewShardMap(128) //for bench
@@ -213,6 +224,83 @@ func TestGetSetDel(t *testing.T) {
 		Initialized = true
 	}
 	Initialized = true
+}
+
+func TestFuzzInitalize(t *testing.T) {
+	for i := 0; i < iterations; i++ {
+		f := fuzz.New().NilChance(0)
+		var shards int = 0
+		f.Fuzz(&shards)
+		NewShardMap(shards)
+	}
+}
+
+func TestFuzzSet(t *testing.T) {
+	for rounds := 0; rounds < 5; rounds++ {
+		x := NewShardMap(shards)
+
+		for i := 0; i < iterations; i++ {
+			f := fuzz.New().NilChance(.25)
+			var value complexXy
+			var key string
+			f.Fuzz(&value)
+			f.Fuzz(&key)
+			var val interface{} = value
+			x.Set(key, &val)
+		}
+	}
+}
+
+func TestFuzzSetGet(t *testing.T) {
+	for rounds := 0; rounds < 2; rounds++ {
+		x := NewShardMap(shards)
+
+		for i := 0; i < iterations; i++ {
+			f := fuzz.New().NilChance(.25)
+			var value complexXy
+			var key string
+			f.Fuzz(&value)
+			f.Fuzz(&key)
+			var val interface{} = value
+			x.Set(key, &val)
+			gv := x.Get(key)
+			if gv == nil {
+				t.Error("nil value?")
+			}
+			if fmt.Sprintf("%#v", *gv) != fmt.Sprintf("%#v", val) {
+				t.Error("values dont match!")
+			}
+		}
+	}
+}
+
+func TestFuzzSetGetDel(t *testing.T) {
+	for rounds := 0; rounds < 2; rounds++ {
+		x := NewShardMap(shards)
+
+		for i := 0; i < iterations; i++ {
+			f := fuzz.New().NilChance(.25)
+			var value complexXy
+			var key string
+			f.Fuzz(&value)
+			f.Fuzz(&key)
+			var val interface{} = value
+			x.Set(key, &val)
+			gv := x.Get(key)
+			if gv == nil {
+				t.Error("nil value?")
+			}
+			if fmt.Sprintf("%#v", *gv) != fmt.Sprintf("%#v", val) {
+				t.Error("values dont match!")
+			}
+
+			x.Delete(key)
+			gv = x.Get(key)
+			if gv != nil {
+				t.Error("delete failed!")
+			}
+		}
+	}
 }
 
 func test(t *testing.T, suffix string) error {
