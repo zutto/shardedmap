@@ -40,10 +40,16 @@ func NewShardMap(shards int) ShardMap {
 	return asmap
 }
 
+/*
+RAW gives you access to the underlying shardmap slice
+*/
 func (a *ShardMap) RAW() *[]*Shard {
 	return &a.shardMap
 }
 
+/*
+DumpKeys dumps the keys and number of shard they are stored at, for debugging purposes.
+*/
 func (a *ShardMap) DumpKeys() {
 	println("-----------------")
 	println("dumping keys")
@@ -107,12 +113,6 @@ func (a *ShardMap) Set(key string, data *interface{}) {
 	defer a.shardMap[shard].Lock.Unlock()
 
 	a.shardMap[shard].InternalMap[key] = data
-	/*
-		if _, found := a.shardMap[shard].InternalMap[key]; !found {
-			a.Set(key, data)
-		} else {
-			//fmt.Printf("set success")
-		} */
 	return
 }
 
