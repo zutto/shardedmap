@@ -65,6 +65,33 @@ func (f *Find) FindValues(filterFunc func(interface{}) bool) {
 	done <- true
 }
 
+func (f *Find) FindFilterValues(filterFunc func(string, interface{}) bool) {
+	StartWork, DoneWork, done := f.fvQueue()
+	wg := sync.WaitGroup{}
+	for _, shard := range *f.q.rawAccess {
+		<-StartWork
+
+		wg.Add(1)
+		go func(shard *Shardmap.Shard) {
+			(*shard).Lock.RLock()
+			defer (*shard).Lock.RUnlock()
+			defer wg.Done()
+			sr := ShardReduce.NewShardReduce((&(*shard).InternalMap))
+			//handle
+
+			sr.Filter(func(k string, i interface{}) bool {
+				return filterFunc(k, i)
+			})
+
+			f.q.ToResults(sr.Get())
+			DoneWork <- true
+		}(shard)
+	}
+
+	wg.Wait()
+	done <- true
+}
+
 func (f *Find) FindKeys(rule string) {
 	StartWork, DoneWork, done := f.fvQueue()
 	wg := sync.WaitGroup{}

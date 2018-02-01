@@ -48,6 +48,11 @@ func (q *Quest) FindValues(filterFunc func(interface{}) bool) *Quest {
 	return q
 }
 
+func (q *Quest) FindFilterValues(filterFunc func(string, interface{}) bool) *Quest {
+	q.find.FindFilterValues(filterFunc)
+	return q
+}
+
 /*
 FindKeys - similar what findvalues is, but accepts a regex string for finding keys.
 

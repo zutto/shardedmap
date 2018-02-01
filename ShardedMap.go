@@ -18,13 +18,21 @@ type Shard struct {
 
 //NewShardMap initializes new Shardmap
 func NewShardMap(shards int) ShardMap {
+	if shards < 1 {
+		shards = 1 //1 is the absolute minimum
+	}
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+
 	asmap := ShardMap{
 		shards:   shards,
 		shardMap: make([]*Shard, shards),
 		Keys:     0,
 	}
 	//generate empty shards
-	for i := 0; i < shards; i++ {
+	for i := 0; i < len(asmap.shardMap); i++ {
 		asmap.shardMap[i] = &Shard{
 			InternalMap: make(map[string]*interface{}),
 		}
