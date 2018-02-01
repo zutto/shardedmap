@@ -1,8 +1,8 @@
 package ShardQuest
 
 import (
-	"github.com/zutto/ShardReduce"
 	"github.com/zutto/shardedmap"
+	"github.com/zutto/shardedmap/ShardReduce"
 	"regexp"
 	"runtime"
 	"strings"

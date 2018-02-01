@@ -16,13 +16,15 @@ var ShardsT int = 16 //more shards = better performane in shardedmap (less I/O m
 var TestMap Shardmap.ShardMap = Shardmap.NewShardMap(ShardsT)
 var gencount int = 10000
 var generated bool = false
+var runners int = runtime.NumCPU()
 
 var written int = 0
 var read int = 0
+var dupes int64 = 0
 
 type tS struct {
-	a int
-	b int
+	A int
+	B int
 }
 
 func prepare() {
@@ -30,6 +32,7 @@ func prepare() {
 }
 
 func genMap() {
+	runners = 2
 	if generated {
 		return
 	}
@@ -38,22 +41,26 @@ func genMap() {
 	}
 	rand.Seed(time.Now().UnixNano())
 	wg := sync.WaitGroup{}
-	for c := 0; c < runtime.NumCPU(); c++ {
+	for c := 0; c < runners; c++ {
 		wg.Add(1)
 		go func() {
 			var r string
-			for i := 0; i < (gencount / (runtime.NumCPU())); i++ {
+			for i := 0; i < (gencount / (runners)); i++ {
 				var q interface{} = tS{2, i}
 				r = RandStringRunes(3)
 
 				TestMap.Set(r, &q)
-				written++
 			}
 			wg.Done()
 		}()
 	}
 
 	wg.Wait()
+	for _, shard := range *TestMap.RAW() {
+		for range shard.InternalMap {
+			written++
+		}
+	}
 	generated = true
 	return
 }
@@ -63,26 +70,37 @@ func TestFreeze(t *testing.T) {
 	genMap()
 	freeze := NewFreeze("tmp/testing", &TestMap)
 	freeze.FreezeCompleteSet()
+	dupes = freeze.GetDupes()
+
 	//freeze.ReindexFreeze()
+	//time.Sleep(time.Second * 2)
+	println("t done")
 }
 
 func TestLoadFreeze(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	genMap()
+
 	xx := Shardmap.NewShardMap(ShardsT)
 	freeze := NewFreeze("tmp/testing", &xx)
+	//dupes = freeze.GetDupes()
 	fmt.Printf("loading..\n")
 	freeze.LoadFreeze()
+	///dupes = freeze.GetDupes()
 	for _, shard := range *xx.RAW() {
-		fmt.Printf("shard\n")
+		//fmt.Printf("shard\n")
 		sr := ShardReduce.NewShardReduce(&shard.InternalMap)
 		sr.Filter(func(k string, v interface{}) bool {
-			read++
+			if v != nil {
+				read++
+			}
+			//fmt.Printf("%#v -- %#v\n", k, v)
 			return false
 		})
 	}
 
-	fmt.Printf("loaded from freeze: %d/%d\n", read, written)
+	fmt.Printf("loaded from freeze: %d/%d - dupes: %d\n", read, written, dupes)
+	time.Sleep(time.Second * 2)
 	os.RemoveAll("tmp/")
 	os.MkdirAll("tmp/", os.ModePerm)
 
