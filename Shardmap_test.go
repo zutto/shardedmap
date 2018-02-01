@@ -26,8 +26,8 @@ type complexXy struct {
 	y       uint16
 }
 
-var a ShardMap = NewShardMap(128) //for bench
-var rndLen = 42
+var a ShardMap = NewShardMap(16) //for bench
+var rndLen = 24
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var x ShardMap
 var Initialized bool = false
