@@ -86,7 +86,7 @@ ResultsToShardedmap - returns a new shardedmap from the results
 func (q *Quest) ResultsToShardedmap(shards int) *Shardmap.ShardMap {
 	x := Shardmap.NewShardMap(shards)
 	for k, v := range *q.result {
-		x.Set(k, v)
+		go x.Set(k, v) //shardedmap is async ready
 	}
 	return &x
 }
@@ -98,7 +98,7 @@ func (q *Quest) Delete() {
 	q.wLock.RLock()
 	defer q.wLock.RUnlock()
 	for k, _ := range *q.result {
-		q.register.Delete(k)
+		go q.register.Delete(k) //shardedmap is async ready
 	}
 }
 
