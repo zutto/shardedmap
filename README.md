@@ -5,11 +5,11 @@ The whole point of this project was to assist me in a scenario where map access 
 
 ( godoc: https://godoc.org/github.com/zutto/shardedmap )
 
-###1. Installation
+### 1. Installation
 `go get github.com/zutto/shardedmap`
 
 
-###2. Usage
+### 2. Usage
 #### Intialization is easy as:
 `shardmap := shardedmap.NewShardMap(24)`
 
@@ -31,19 +31,19 @@ shardmap.Set("I am a string key", &data)
 
 Input data type is interface{}, key datatype is always a string.
 
-#####Reading items from shardmap
+##### Reading items from shardmap
 ```
 retrievedData := shardmap.Get("I am a string key")
 ```
 
-####Deleting items from shardmap
+#### Deleting items from shardmap
 ```
 shardmap.Delete("I am a string key")
 ```
 
 ###### for more documentation, please look at godoc or the source code!
 
-###3. Performance
+### 3. Performance
 There are benchmarks comparing normal map vs shardedmap included in the shardmap_test.go file.
 Generally, shardedmap only becomes faster the more I/O you require, and amount of shards you are willing to create. Also, don't forget that slices exist! use slices if you can!!
 
@@ -69,14 +69,14 @@ Shards are stored in a slice. The slice where your data is added to is computed 
 Djbhash is very simple and insecure hash, its sole purpose is to split the I/O access across the shards, thus why fast hashing function was deemed necessary. 
 
 
-###4. Limitations
+### 4. Limitations
 Limitations mainly come from golangs std rwmutex & slices & maps. If you find more limitations in this project, do please let me know!
 
 
 
 
 
-###----------------
+### ----------------
 
 
 TODO:
